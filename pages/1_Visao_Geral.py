@@ -20,8 +20,10 @@ with st.sidebar:
 canal_sql = ""
 if canal_sel == "E-commerce":
     canal_sql = "AND origem_sistema = 'ECOM'"
-elif canal_sel != "Todos":
-    canal_sql = f"AND loja = '{canal_sel}'"
+elif canal_sel == "Loja Jardim América":
+    canal_sql = "AND LOWER(loja) LIKE '%jardim%'"
+elif canal_sel == "Loja Bernardo Sayão":
+    canal_sql = "AND LOWER(loja) LIKE '%bernardo%'"
 
 filtro = f"AND DATE(data_pedido) BETWEEN '{data_inicio}' AND '{data_fim}' {STATUS_FATURADO} {canal_sql}"
 
