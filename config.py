@@ -17,3 +17,15 @@ PERIODOS = [
     "Este ano",
     "Tudo",
 ]
+
+# Exclui documentos das lojas próprias (aparecem indevidamente como clientes)
+EXCLUIR_LOJAS = f"""
+    AND documento NOT IN (
+        SELECT documento FROM {CLIENTES}
+        WHERE UPPER(COALESCE(nome_completo, '')) LIKE '%M A CONFEC%'
+           OR UPPER(COALESCE(nome_completo, '')) LIKE '%N S CONFEC%'
+    )
+"""
+
+# Apenas pedidos com status faturado
+STATUS_FATURADO = "AND UPPER(COALESCE(status_pedido, '')) = 'FATURADO'"

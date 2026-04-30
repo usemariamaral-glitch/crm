@@ -8,7 +8,6 @@ from datetime import date, timedelta
 @st.cache_resource
 def get_client():
     try:
-        # Na nuvem (Streamlit Cloud): usa a chave de serviço salva nos secrets
         if "gcp_service_account" in st.secrets:
             from google.oauth2 import service_account
             credentials = service_account.Credentials.from_service_account_info(
@@ -16,16 +15,12 @@ def get_client():
                 scopes=["https://www.googleapis.com/auth/bigquery"],
             )
             return bigquery.Client(project="datalake-488518", credentials=credentials)
-
-        # Local: usa o login do Google feito via gcloud
         credentials, _ = google.auth.default(
             scopes=["https://www.googleapis.com/auth/bigquery"]
         )
         return bigquery.Client(project="datalake-488518", credentials=credentials)
-
     except Exception as e:
         st.error(f"Erro de autenticação com o Google: {e}")
-        st.info("**Solução local:** Abra o terminal e execute:\n\n`gcloud auth application-default login`")
         st.stop()
 
 
@@ -69,11 +64,23 @@ def fmt_num(v) -> str:
 
 
 def fone_whatsapp(ddd, tel) -> str:
-    if not ddd or not tel:
+    try:
+        if pd.isna(ddd) or pd.isna(tel):
+            return ""
+        d = str(int(float(str(ddd).strip().replace("(", "").replace(")", "").replace(" ", ""))))
+        t = str(int(float(str(tel).strip().replace("-", "").replace(" ", ""))))
+        if not d or not t:
+            return ""
+        return f"55{d}{t}"
+    except (ValueError, TypeError, OverflowError):
         return ""
-    d = str(ddd).strip().replace("(", "").replace(")", "").replace(" ", "")
-    t = str(tel).strip().replace("-", "").replace(" ", "")
-    return f"55{d}{t}"
+
+
+def primeiro_nome(nome) -> str:
+    if not pd.notna(nome):
+        return ""
+    parts = str(nome).strip().split()
+    return parts[0].capitalize() if parts else ""
 
 
 CSS = """
@@ -91,9 +98,41 @@ div[data-testid="stSidebarContent"] { background: linear-gradient(180deg, #F8F0F
 """
 
 
+def verificar_senha() -> bool:
+    """Retorna True se autenticado. Exibe tela de login caso contrário."""
+    if st.session_state.get("_autenticado"):
+        return True
+
+    st.markdown(CSS, unsafe_allow_html=True)
+    _, col, _ = st.columns([1, 1, 1])
+    with col:
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown("## 👗 CRM Mari Amaral")
+        st.markdown("Digite a senha para acessar o sistema.")
+        senha = st.text_input("Senha", type="password", key="_senha_input")
+        if st.button("Entrar", use_container_width=True, type="primary"):
+            senha_correta = st.secrets.get("app_password", "maricrm2024")
+            if senha == senha_correta:
+                st.session_state["_autenticado"] = True
+                st.rerun()
+            else:
+                st.error("Senha incorreta.")
+    return False
+
+
 def sidebar_periodo():
+    """Retorna (data_inicio: str, data_fim: str)."""
     from config import PERIODOS
-    return st.sidebar.selectbox("Período", PERIODOS, index=2)
+    hoje = date.today()
+    opcoes = PERIODOS + ["Período personalizado"]
+    periodo = st.sidebar.selectbox("Período", opcoes, index=2)
+
+    if periodo == "Período personalizado":
+        d_ini = st.sidebar.date_input("De", value=hoje - timedelta(days=90), max_value=hoje)
+        d_fim = st.sidebar.date_input("Até", value=hoje, max_value=hoje)
+        return str(d_ini), str(d_fim)
+
+    return periodo_para_data(periodo), str(hoje)
 
 
 def sidebar_lojas(df_lojas: pd.DataFrame | None = None):

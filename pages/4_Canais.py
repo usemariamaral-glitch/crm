@@ -2,23 +2,24 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-from utils import run_query, fmt_brl, fmt_num, CSS, periodo_para_data, sidebar_periodo
-from config import PEDIDOS, CLIENTES
+from utils import run_query, fmt_brl, fmt_num, CSS, sidebar_periodo, verificar_senha
+from config import PEDIDOS, EXCLUIR_LOJAS, STATUS_FATURADO
 
 st.set_page_config(page_title="Canais | CRM", page_icon="🏪", layout="wide")
+if not verificar_senha():
+    st.stop()
 st.markdown(CSS, unsafe_allow_html=True)
 st.title("🏪 Análise de Canais")
 st.markdown("Comparativo entre **E-commerce**, **Loja Jardim América** e **Loja Bernardo Sayão**.")
 
 with st.sidebar:
     st.header("Filtros")
-    periodo = sidebar_periodo()
-    data_inicio = periodo_para_data(periodo)
+    data_inicio, data_fim = sidebar_periodo()
 
-filtro = f"AND DATE(data_pedido) >= '{data_inicio}'"
+filtro = f"AND DATE(data_pedido) BETWEEN '{data_inicio}' AND '{data_fim}' {STATUS_FATURADO}"
 
 # ── KPIs por canal ────────────────────────────────────────────────────────────
-SQL_CANAIS = f"""
+df_canais = run_query(f"""
     SELECT
         loja,
         origem_sistema,
@@ -28,11 +29,10 @@ SQL_CANAIS = f"""
         AVG(total_pedido)          AS ticket_medio,
         SUM(desconto)              AS total_desconto
     FROM {PEDIDOS}
-    WHERE documento IS NOT NULL {filtro}
+    WHERE documento IS NOT NULL {filtro} {EXCLUIR_LOJAS}
     GROUP BY 1, 2
     ORDER BY receita_total DESC
-"""
-df_canais = run_query(SQL_CANAIS)
+""")
 
 if df_canais.empty:
     st.warning("Sem dados para o período selecionado.")
@@ -88,7 +88,7 @@ df_mensal = run_query(f"""
         SUM(total_pedido)         AS receita,
         COUNT(DISTINCT pedido_id) AS pedidos
     FROM {PEDIDOS}
-    WHERE documento IS NOT NULL {filtro}
+    WHERE documento IS NOT NULL {filtro} {EXCLUIR_LOJAS}
     GROUP BY 1, 2
     ORDER BY 1
 """)
@@ -113,7 +113,7 @@ st.divider()
 st.subheader("🔀 Análise Omnichannel")
 st.markdown("Clientes que compraram em **mais de um canal**.")
 
-SQL_OMNI = f"""
+df_omni = run_query(f"""
     WITH canais_por_cliente AS (
         SELECT
             documento,
@@ -121,7 +121,7 @@ SQL_OMNI = f"""
             COUNT(DISTINCT loja)           AS qtd_lojas,
             STRING_AGG(DISTINCT loja, ' + ' ORDER BY loja) AS lojas_usadas
         FROM {PEDIDOS}
-        WHERE documento IS NOT NULL {filtro}
+        WHERE documento IS NOT NULL {filtro} {EXCLUIR_LOJAS}
         GROUP BY documento
     )
     SELECT
@@ -134,23 +134,20 @@ SQL_OMNI = f"""
     FROM canais_por_cliente
     GROUP BY 1
     ORDER BY 2 DESC
-"""
-df_omni = run_query(SQL_OMNI)
+""")
 
 col_a, col_b = st.columns([1, 2])
-
 with col_a:
     if not df_omni.empty:
         total_omni = df_omni[df_omni["perfil"].str.contains("Omnichannel|Multi", na=False)]["clientes"].sum()
         total_geral = df_omni["clientes"].sum()
         st.metric("Clientes Omnichannel", fmt_num(total_omni))
-        st.metric("% da Base Total",      f"{total_omni / total_geral * 100:.1f}%" if total_geral else "0%")
+        st.metric("% da Base Total", f"{total_omni / total_geral * 100:.1f}%" if total_geral else "0%")
         st.markdown("---")
         st.dataframe(
             df_omni.rename(columns={"perfil": "Perfil", "clientes": "Clientes"}),
             hide_index=True, use_container_width=True,
         )
-
 with col_b:
     if not df_omni.empty:
         fig4 = px.pie(
@@ -163,11 +160,10 @@ with col_b:
 
 st.divider()
 
-# ── Sequência de canais (Primeira compra → Última compra) ─────────────────────
-st.subheader("📍 Jornada: Primeiro Canal → Último Canal")
-st.markdown("Mostra como os clientes transitam entre canais ao longo do tempo.")
+# ── Jornada de canais — Heatmap ───────────────────────────────────────────────
+st.subheader("📍 Jornada de Canais: Onde o cliente começou → onde comprou por último")
 
-SQL_JORNADA = f"""
+df_jornada = run_query(f"""
     WITH ranked AS (
         SELECT
             documento,
@@ -176,7 +172,7 @@ SQL_JORNADA = f"""
             ROW_NUMBER() OVER (PARTITION BY documento ORDER BY data_pedido ASC)  AS rn_first,
             ROW_NUMBER() OVER (PARTITION BY documento ORDER BY data_pedido DESC) AS rn_last
         FROM {PEDIDOS}
-        WHERE documento IS NOT NULL {filtro}
+        WHERE documento IS NOT NULL {filtro} {EXCLUIR_LOJAS}
     ),
     first_last AS (
         SELECT
@@ -194,28 +190,35 @@ SQL_JORNADA = f"""
     WHERE primeiro_canal IS NOT NULL AND ultimo_canal IS NOT NULL
     GROUP BY 1, 2
     ORDER BY 3 DESC
-"""
-df_jornada = run_query(SQL_JORNADA)
+""")
 
 if not df_jornada.empty:
-    lojas    = sorted(set(df_jornada["origem"].tolist() + df_jornada["destino"].tolist()))
-    node_idx = {loja: i for i, loja in enumerate(lojas)}
+    df_pivot = df_jornada.pivot_table(
+        index="origem", columns="destino", values="clientes", aggfunc="sum", fill_value=0
+    )
 
-    fig5 = go.Figure(go.Sankey(
-        node=dict(
-            pad=20, thickness=20,
-            label=lojas,
-            color=["#C85DA4", "#8B2FC9", "#E8A0D0"][:len(lojas)],
-        ),
-        link=dict(
-            source=[node_idx[o] for o in df_jornada["origem"]],
-            target=[node_idx[d] for d in df_jornada["destino"]],
-            value=df_jornada["clientes"].tolist(),
-        ),
-    ))
-    fig5.update_layout(title_text="Fluxo de Canais (1ª compra → última compra)", height=350)
+    fig5 = px.imshow(
+        df_pivot,
+        labels={"x": "Último Canal (onde comprou por último)",
+                "y": "Primeiro Canal (onde comprou primeiro)",
+                "color": "Clientes"},
+        color_continuous_scale=["#FDF0F8", "#C85DA4", "#4A0A5C"],
+        text_auto=True,
+    )
+    fig5.update_layout(height=350, plot_bgcolor="white")
     st.plotly_chart(fig5, use_container_width=True)
+
+    st.info("""
+    **Como ler o mapa acima:**
+    Cada célula mostra quantos clientes fizeram a **primeira compra no canal da linha** e
+    a **última compra no canal da coluna**.
+    Células na diagonal = clientes que não mudaram de canal.
+    Células fora da diagonal = clientes que migraram de canal ao longo do tempo.
+    """)
+
+    st.markdown("**Detalhamento por jornada:**")
     st.dataframe(
-        df_jornada.rename(columns={"origem": "1º Canal", "destino": "Último Canal", "clientes": "Clientes"}),
+        df_jornada.rename(columns={"origem": "1º Canal", "destino": "Último Canal", "clientes": "Clientes"})
+        .assign(Porcentagem=lambda x: (x["Clientes"] / x["Clientes"].sum() * 100).round(1).astype(str) + "%"),
         hide_index=True, use_container_width=True,
     )

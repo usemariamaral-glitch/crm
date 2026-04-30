@@ -1,19 +1,29 @@
 import streamlit as st
 import plotly.express as px
 import pandas as pd
-from utils import run_query, fmt_brl, fmt_num, CSS, periodo_para_data, sidebar_periodo
-from config import PEDIDOS, ITENS
+from utils import run_query, fmt_brl, fmt_num, CSS, sidebar_periodo, verificar_senha
+from config import PEDIDOS, ITENS, PAGAMENTOS, EXCLUIR_LOJAS, STATUS_FATURADO
 
 st.set_page_config(page_title="Visão Geral | CRM", page_icon="📊", layout="wide")
+if not verificar_senha():
+    st.stop()
 st.markdown(CSS, unsafe_allow_html=True)
 st.title("📊 Visão Geral")
 
 with st.sidebar:
     st.header("Filtros")
-    periodo = sidebar_periodo()
-    data_inicio = periodo_para_data(periodo)
+    data_inicio, data_fim = sidebar_periodo()
+    st.divider()
+    canal_opcoes = ["Todos", "E-commerce", "Loja Jardim América", "Loja Bernardo Sayão"]
+    canal_sel = st.selectbox("Canal", canal_opcoes)
 
-filtro = f"AND DATE(data_pedido) >= '{data_inicio}'"
+canal_sql = ""
+if canal_sel == "E-commerce":
+    canal_sql = "AND origem_sistema = 'ECOM'"
+elif canal_sel != "Todos":
+    canal_sql = f"AND loja = '{canal_sel}'"
+
+filtro = f"AND DATE(data_pedido) BETWEEN '{data_inicio}' AND '{data_fim}' {STATUS_FATURADO} {canal_sql}"
 
 # ── KPIs ──────────────────────────────────────────────────────────────────────
 df_kpi = run_query(f"""
@@ -24,7 +34,7 @@ df_kpi = run_query(f"""
         AVG(total_pedido)          AS ticket_medio,
         SUM(desconto)              AS total_desconto
     FROM {PEDIDOS}
-    WHERE documento IS NOT NULL {filtro}
+    WHERE documento IS NOT NULL {filtro} {EXCLUIR_LOJAS}
 """)
 
 if not df_kpi.empty:
@@ -35,6 +45,38 @@ if not df_kpi.empty:
     c3.metric("Receita Total",      fmt_brl(r.receita_total))
     c4.metric("Ticket Médio",       fmt_brl(r.ticket_medio))
     c5.metric("Total em Descontos", fmt_brl(r.total_desconto))
+
+# ── Novos vs Recorrentes ───────────────────────────────────────────────────────
+df_nv = run_query(f"""
+    WITH compras AS (
+        SELECT documento, DATE(data_pedido) AS dt
+        FROM {PEDIDOS}
+        WHERE documento IS NOT NULL {STATUS_FATURADO} {EXCLUIR_LOJAS} {canal_sql}
+    ),
+    primeira AS (
+        SELECT documento, MIN(dt) AS primeira_compra FROM compras GROUP BY documento
+    ),
+    no_periodo AS (
+        SELECT DISTINCT documento FROM compras
+        WHERE dt BETWEEN '{data_inicio}' AND '{data_fim}'
+    )
+    SELECT
+        COUNT(*) AS total,
+        COUNTIF(p.primeira_compra BETWEEN '{data_inicio}' AND '{data_fim}') AS novos,
+        COUNTIF(p.primeira_compra < '{data_inicio}') AS retornantes
+    FROM no_periodo np
+    JOIN primeira p USING (documento)
+""")
+
+if not df_nv.empty and df_nv.iloc[0].total > 0:
+    nv = df_nv.iloc[0]
+    total = int(nv.total) if nv.total else 1
+    cn1, cn2, cn3 = st.columns(3)
+    cn1.metric("Clientes no Período",   fmt_num(nv.total))
+    cn2.metric("Clientes Novos",        fmt_num(nv.novos),
+               delta=f"{nv.novos/total*100:.1f}% do total")
+    cn3.metric("Clientes Recorrentes",  fmt_num(nv.retornantes),
+               delta=f"{nv.retornantes/total*100:.1f}% do total")
 
 st.divider()
 
@@ -49,7 +91,7 @@ with col_l:
             loja,
             SUM(total_pedido) AS receita
         FROM {PEDIDOS}
-        WHERE documento IS NOT NULL {filtro}
+        WHERE documento IS NOT NULL {filtro} {EXCLUIR_LOJAS}
         GROUP BY 1, 2
         ORDER BY 1
     """)
@@ -73,7 +115,7 @@ with col_r:
             SUM(total_pedido) AS receita,
             COUNT(DISTINCT documento) AS clientes
         FROM {PEDIDOS}
-        WHERE documento IS NOT NULL {filtro}
+        WHERE documento IS NOT NULL {filtro} {EXCLUIR_LOJAS}
         GROUP BY 1
         ORDER BY 2 DESC
     """)
@@ -94,18 +136,27 @@ with col_r:
 
 st.divider()
 
-# ── Top categorias + Novos clientes ──────────────────────────────────────────
+# ── Top categorias + Novos clientes ───────────────────────────────────────────
 col_a, col_b = st.columns(2)
 
 with col_a:
     st.subheader("Top 10 Categorias")
     df_cat = run_query(f"""
         SELECT
-            COALESCE(categoria, 'Sem categoria') AS categoria,
-            SUM(preco_total)  AS receita,
-            SUM(quantidade)   AS unidades
+            CASE
+                WHEN LOWER(COALESCE(categoria,'')) LIKE 'conjunto%' THEN 'Conjunto'
+                WHEN LOWER(COALESCE(categoria,'')) LIKE 'vestido%'  THEN 'Vestido'
+                ELSE COALESCE(categoria, 'Sem categoria')
+            END AS categoria,
+            SUM(preco_total) AS receita,
+            SUM(quantidade)  AS unidades
         FROM {ITENS}
-        WHERE categoria IS NOT NULL {filtro.replace('data_pedido', 'DATE(data_pedido)')}
+        WHERE categoria IS NOT NULL
+          AND DATE(data_pedido) BETWEEN '{data_inicio}' AND '{data_fim}'
+          AND pedido_id IN (
+              SELECT pedido_id FROM {PEDIDOS}
+              WHERE {STATUS_FATURADO.replace('AND ','')} {EXCLUIR_LOJAS} {canal_sql}
+          )
         GROUP BY 1
         ORDER BY 2 DESC
         LIMIT 10
@@ -126,12 +177,12 @@ with col_b:
         WITH primeira AS (
             SELECT documento, DATE_TRUNC(DATE(MIN(data_pedido)), MONTH) AS mes
             FROM {PEDIDOS}
-            WHERE documento IS NOT NULL
+            WHERE documento IS NOT NULL {STATUS_FATURADO} {EXCLUIR_LOJAS} {canal_sql}
             GROUP BY 1
         )
         SELECT mes, COUNT(*) AS novos_clientes
         FROM primeira
-        WHERE mes >= '{data_inicio}'
+        WHERE mes BETWEEN '{data_inicio}' AND '{data_fim}'
         GROUP BY 1
         ORDER BY 1
     """)
@@ -145,17 +196,20 @@ with col_b:
         fig4.update_layout(plot_bgcolor="white")
         st.plotly_chart(fig4, use_container_width=True)
 
-# ── Forma de pagamento ────────────────────────────────────────────────────────
+# ── Forma de pagamento ─────────────────────────────────────────────────────────
 st.subheader("Formas de Pagamento")
-from config import PAGAMENTOS
 df_pg = run_query(f"""
     SELECT
         forma_pagamento,
         COUNT(DISTINCT pedido_id) AS pedidos,
         SUM(valor_pagamento)      AS total
     FROM {PAGAMENTOS}
-    WHERE DATE(data_pedido) >= '{data_inicio}'
+    WHERE DATE(data_pedido) BETWEEN '{data_inicio}' AND '{data_fim}'
       AND status_pagamento IS NOT NULL
+      AND pedido_id IN (
+          SELECT pedido_id FROM {PEDIDOS}
+          WHERE {STATUS_FATURADO.replace('AND ','')} {EXCLUIR_LOJAS} {canal_sql}
+      )
     GROUP BY 1
     ORDER BY 3 DESC
 """)

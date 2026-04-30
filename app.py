@@ -1,5 +1,5 @@
 import streamlit as st
-from utils import CSS
+from utils import CSS, verificar_senha
 
 st.set_page_config(
     page_title="CRM Mari Amaral",
@@ -7,8 +7,11 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-st.markdown(CSS, unsafe_allow_html=True)
 
+if not verificar_senha():
+    st.stop()
+
+st.markdown(CSS, unsafe_allow_html=True)
 st.title("👗 CRM Mari Amaral")
 st.markdown("**Gestão inteligente de clientes** — E-commerce + Loja Jardim América + Loja Bernardo Sayão")
 st.divider()
@@ -37,3 +40,8 @@ for i, (icon, titulo, descricao) in enumerate(modulos):
 
 st.divider()
 st.info("👈 **Use o menu lateral para navegar entre os módulos.** Os dados são atualizados automaticamente do BigQuery (cache de 1 hora).")
+
+with st.sidebar:
+    if st.button("🚪 Sair", use_container_width=True):
+        st.session_state["_autenticado"] = False
+        st.rerun()

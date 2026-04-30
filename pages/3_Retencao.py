@@ -2,17 +2,25 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-from utils import run_query, fmt_num, CSS, periodo_para_data, sidebar_periodo
-from config import PEDIDOS
+from utils import run_query, fmt_num, CSS, sidebar_periodo, verificar_senha
+from config import PEDIDOS, EXCLUIR_LOJAS, STATUS_FATURADO
 
 st.set_page_config(page_title="Retenção | CRM", page_icon="📈", layout="wide")
+if not verificar_senha():
+    st.stop()
 st.markdown(CSS, unsafe_allow_html=True)
 st.title("📈 Retenção & Recompra")
 
 with st.sidebar:
     st.header("Filtros")
-    periodo = sidebar_periodo()
-    data_inicio = periodo_para_data(periodo)
+    data_inicio, data_fim = sidebar_periodo()
+
+base_where = f"""
+    WHERE documento IS NOT NULL
+      AND DATE(data_pedido) BETWEEN '{data_inicio}' AND '{data_fim}'
+      {STATUS_FATURADO}
+      {EXCLUIR_LOJAS}
+"""
 
 # ── Cohort de retenção ────────────────────────────────────────────────────────
 SQL_COHORT = f"""
@@ -21,8 +29,7 @@ WITH primeira_compra AS (
         documento,
         DATE_TRUNC(DATE(MIN(data_pedido)), MONTH) AS cohort_mes
     FROM {PEDIDOS}
-    WHERE documento IS NOT NULL
-      AND DATE(data_pedido) >= '{data_inicio}'
+    {base_where}
     GROUP BY documento
 ),
 atividade AS (
@@ -30,8 +37,7 @@ atividade AS (
         p.documento,
         DATE_TRUNC(DATE(p.data_pedido), MONTH) AS mes_atividade
     FROM {PEDIDOS} p
-    WHERE p.documento IS NOT NULL
-      AND DATE(p.data_pedido) >= '{data_inicio}'
+    {base_where}
 ),
 cohort_data AS (
     SELECT
@@ -69,7 +75,6 @@ if df_cohort.empty:
 df_cohort["cohort_mes"] = pd.to_datetime(df_cohort["cohort_mes"])
 df_cohort["mes_label"]  = df_cohort["cohort_mes"].dt.strftime("%b/%Y")
 
-# ── Heatmap de retenção ───────────────────────────────────────────────────────
 st.subheader("Heatmap de Retenção por Cohort")
 st.markdown("Percentual de clientes que voltaram a comprar em cada mês após a primeira compra.")
 
@@ -103,14 +108,13 @@ col_l, col_r = st.columns(2)
 
 with col_l:
     st.subheader("Taxa de Recompra Geral")
-    SQL_RECOMPRA = f"""
+    df_recompra = run_query(f"""
         WITH pedidos_por_cliente AS (
             SELECT
                 documento,
                 COUNT(DISTINCT pedido_id) AS total_pedidos
             FROM {PEDIDOS}
-            WHERE documento IS NOT NULL
-              AND DATE(data_pedido) >= '{data_inicio}'
+            {base_where}
             GROUP BY 1
         )
         SELECT
@@ -125,15 +129,12 @@ with col_l:
         FROM pedidos_por_cliente
         GROUP BY 1
         ORDER BY MIN(total_pedidos)
-    """
-    df_recompra = run_query(SQL_RECOMPRA)
+    """)
     if not df_recompra.empty:
         total = df_recompra["clientes"].sum()
         recompram = df_recompra[df_recompra["faixa"] != "1 compra (único)"]["clientes"].sum()
         taxa = recompram / total * 100 if total > 0 else 0
-
         st.metric("Taxa de Recompra", f"{taxa:.1f}%", help="% de clientes que compraram mais de 1 vez")
-
         fig_rc = px.bar(
             df_recompra, x="faixa", y="clientes",
             color_discrete_sequence=["#C85DA4"],
@@ -144,15 +145,14 @@ with col_l:
 
 with col_r:
     st.subheader("Recompra por Canal")
-    SQL_RC_CANAL = f"""
+    df_rc_canal = run_query(f"""
         WITH pedidos_por_cliente AS (
             SELECT
                 documento,
                 loja,
                 COUNT(DISTINCT pedido_id) AS total_pedidos
             FROM {PEDIDOS}
-            WHERE documento IS NOT NULL
-              AND DATE(data_pedido) >= '{data_inicio}'
+            {base_where}
             GROUP BY 1, 2
         )
         SELECT
@@ -163,8 +163,7 @@ with col_r:
         FROM pedidos_por_cliente
         GROUP BY 1
         ORDER BY 4 DESC
-    """
-    df_rc_canal = run_query(SQL_RC_CANAL)
+    """)
     if not df_rc_canal.empty:
         fig_rc2 = px.bar(
             df_rc_canal, x="loja", y="taxa_recompra",
@@ -180,7 +179,7 @@ st.divider()
 
 # ── Intervalo médio entre compras ─────────────────────────────────────────────
 st.subheader("Intervalo Médio entre Compras (dias)")
-SQL_INTERVALO = f"""
+df_intv = run_query(f"""
     WITH datas AS (
         SELECT
             documento,
@@ -188,8 +187,7 @@ SQL_INTERVALO = f"""
             DATE(data_pedido) AS dt,
             LAG(DATE(data_pedido)) OVER (PARTITION BY documento ORDER BY data_pedido) AS dt_anterior
         FROM {PEDIDOS}
-        WHERE documento IS NOT NULL
-          AND DATE(data_pedido) >= '{data_inicio}'
+        {base_where}
     )
     SELECT
         loja,
@@ -199,8 +197,7 @@ SQL_INTERVALO = f"""
     WHERE dt_anterior IS NOT NULL
     GROUP BY 1
     ORDER BY 2
-"""
-df_intv = run_query(SQL_INTERVALO)
+""")
 if not df_intv.empty:
     fig_intv = px.bar(
         df_intv, x="loja", y="intervalo_medio_dias",
