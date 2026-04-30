@@ -25,21 +25,32 @@ with st.sidebar:
         format_func=lambda m: MESES[m],
         index=date.today().month - 1,
     )
+    canal_opcoes = ["Todos os canais", "E-commerce", "Loja Jardim América", "Loja Bernardo Sayão"]
+    canal_sel = st.selectbox("Canal", canal_opcoes)
     apenas_com_telefone    = st.checkbox("Apenas com telefone cadastrado", value=True)
     apenas_clientes_ativos = st.checkbox("Apenas quem já comprou", value=True)
+
+canal_sql = ""
+if canal_sel == "E-commerce":
+    canal_sql = "AND p.origem_sistema = 'ECOM'"
+elif canal_sel != "Todos os canais":
+    canal_sql = f"AND p.loja = '{canal_sel}'"
 
 SQL = f"""
     WITH metricas AS (
         SELECT
-            documento,
-            COUNT(DISTINCT pedido_id)                               AS total_pedidos,
-            SUM(total_pedido)                                       AS total_gasto,
-            MAX(DATE(data_pedido))                                  AS ultima_compra,
-            DATE_DIFF(CURRENT_DATE(), MAX(DATE(data_pedido)), DAY)  AS dias_sem_comprar,
-            STRING_AGG(DISTINCT loja, ' / ' ORDER BY loja)         AS canais
-        FROM {PEDIDOS}
-        WHERE documento IS NOT NULL {STATUS_FATURADO} {EXCLUIR_LOJAS}
-        GROUP BY documento
+            p.documento,
+            COUNT(DISTINCT p.pedido_id)                                    AS total_pedidos,
+            SUM(p.total_pedido)                                            AS total_gasto,
+            MAX(DATE(p.data_pedido))                                       AS ultima_compra,
+            DATE_DIFF(CURRENT_DATE(), MAX(DATE(p.data_pedido)), DAY)       AS dias_sem_comprar,
+            STRING_AGG(DISTINCT p.loja, ' / ' ORDER BY p.loja)            AS canais,
+            ARRAY_AGG(p.origem_sistema ORDER BY p.data_pedido DESC LIMIT 1)[OFFSET(0)] AS ultimo_canal
+        FROM {PEDIDOS} p
+        WHERE p.documento IS NOT NULL {STATUS_FATURADO}
+          {EXCLUIR_LOJAS.replace('AND documento', 'AND p.documento')}
+          {canal_sql}
+        GROUP BY p.documento
     )
     SELECT
         c.documento,
@@ -54,7 +65,8 @@ SQL = f"""
         m.total_gasto,
         m.ultima_compra,
         m.dias_sem_comprar,
-        m.canais
+        m.canais,
+        m.ultimo_canal
     FROM {CLIENTES} c
     {"JOIN" if apenas_clientes_ativos else "LEFT JOIN"} metricas m USING (documento)
     WHERE c.data_nascimento IS NOT NULL
@@ -68,28 +80,20 @@ if df.empty:
     st.warning(f"Nenhum aniversariante encontrado em {MESES[mes_sel]}.")
     st.stop()
 
-df["whatsapp"]     = df.apply(lambda r: fone_whatsapp(r.ddd, r.telefone), axis=1)
+df["whatsapp"]      = df.apply(lambda r: fone_whatsapp(r.ddd, r.telefone), axis=1)
 df["primeiro_nome"] = df["nome_completo"].apply(primeiro_nome)
 
 if apenas_com_telefone:
     df = df[df["whatsapp"] != ""]
 
-# ── Destaques do mês ──────────────────────────────────────────────────────────
+# ── Métricas do mês ────────────────────────────────────────────────────────────
 hoje = date.today()
-df["faz_aniversario_hoje"] = df["dia_aniversario"] == hoje.day
-df["dias_para_aniversario"] = df["dia_aniversario"].apply(
-    lambda d: int(d) - hoje.day if int(d) >= hoje.day else int(d) + (31 - hoje.day)
-)
+df["dia_aniversario"] = df["dia_aniversario"].astype(int)
 
 c1, c2, c3 = st.columns(3)
 c1.metric(f"Aniversariantes em {MESES[mes_sel]}", fmt_num(len(df)))
-c2.metric("Fazem aniversário hoje",               fmt_num(df["faz_aniversario_hoje"].sum()))
+c2.metric("Fazem aniversário hoje",               fmt_num((df["dia_aniversario"] == hoje.day).sum()))
 c3.metric("Com WhatsApp cadastrado",               fmt_num((df["whatsapp"] != "").sum()))
-
-aniversariantes_hoje = df[df["faz_aniversario_hoje"]]
-if not aniversariantes_hoje.empty:
-    st.balloons()
-    st.success("🎉 **Parabéns hoje:** " + ", ".join(aniversariantes_hoje["primeiro_nome"].tolist()))
 
 st.divider()
 
@@ -98,8 +102,8 @@ st.subheader(f"Lista de Aniversariantes — {MESES[mes_sel]}")
 
 df_exib = df[[
     "dia_aniversario", "nome_completo", "primeiro_nome",
-    "email", "whatsapp", "cidade",
-    "total_pedidos", "total_gasto", "ultima_compra", "dias_sem_comprar", "canais",
+    "email", "whatsapp", "cidade", "canais",
+    "total_pedidos", "total_gasto", "ultima_compra", "dias_sem_comprar",
 ]].rename(columns={
     "dia_aniversario":  "Dia",
     "nome_completo":    "Nome Completo",
@@ -107,11 +111,11 @@ df_exib = df[[
     "email":            "E-mail",
     "whatsapp":         "WhatsApp",
     "cidade":           "Cidade",
+    "canais":           "Canais",
     "total_pedidos":    "Pedidos",
     "total_gasto":      "LTV (R$)",
     "ultima_compra":    "Última Compra",
     "dias_sem_comprar": "Dias s/ comprar",
-    "canais":           "Canais",
 })
 
 st.dataframe(df_exib, hide_index=True, use_container_width=True, height=380)
@@ -121,9 +125,7 @@ with col_dl1:
     csv = df_exib.to_csv(index=False).encode("utf-8")
     st.download_button(
         f"⬇️ Baixar CSV — {MESES[mes_sel]}",
-        data=csv,
-        file_name=f"aniversariantes_{MESES[mes_sel].lower()}.csv",
-        mime="text/csv",
+        data=csv, file_name=f"aniversariantes_{MESES[mes_sel].lower()}.csv", mime="text/csv",
     )
 with col_dl2:
     from io import BytesIO
@@ -144,8 +146,6 @@ st.subheader("Distribuição por dia do mês")
 import plotly.express as px
 
 df_dias = df.groupby("dia_aniversario").size().reset_index(name="quantidade")
-df_dias["dia_aniversario"] = df_dias["dia_aniversario"].astype(int)
-
 fig = px.bar(
     df_dias, x="dia_aniversario", y="quantidade",
     labels={"dia_aniversario": "Dia do mês", "quantidade": "Aniversariantes"},
@@ -158,21 +158,21 @@ st.plotly_chart(fig, use_container_width=True)
 
 st.divider()
 
-# ── Disparo de webhook — próximos 7 dias ─────────────────────────────────────
-st.subheader("🚀 Disparo via Webhook — Próximos 7 dias")
+# ── Webhook — exatamente hoje + 7 dias ────────────────────────────────────────
+st.subheader("🚀 Disparo via Webhook — Aniversário daqui a 7 dias")
 
-proximos_7 = [(hoje + timedelta(days=i)) for i in range(8)]
-condicoes = " OR ".join([
-    f"(EXTRACT(MONTH FROM c.data_nascimento) = {d.month} AND EXTRACT(DAY FROM c.data_nascimento) = {d.day})"
-    for d in proximos_7
-])
+dia_alvo = hoje + timedelta(days=7)
+st.info(f"Hoje é **{hoje.strftime('%d/%m/%Y')}**. O disparo será para quem faz aniversário em **{dia_alvo.strftime('%d/%m/%Y')}** (dia {dia_alvo.day} de {MESES[dia_alvo.month]}).")
 
-df_webhook = run_query(f"""
+SQL_WEBHOOK = f"""
     WITH metricas AS (
-        SELECT documento
-        FROM {PEDIDOS}
-        WHERE documento IS NOT NULL {STATUS_FATURADO} {EXCLUIR_LOJAS}
-        GROUP BY documento
+        SELECT
+            p.documento,
+            ARRAY_AGG(p.origem_sistema ORDER BY p.data_pedido DESC LIMIT 1)[OFFSET(0)] AS ultimo_canal
+        FROM {PEDIDOS} p
+        WHERE p.documento IS NOT NULL {STATUS_FATURADO}
+          {EXCLUIR_LOJAS.replace('AND documento', 'AND p.documento')}
+        GROUP BY p.documento
     )
     SELECT
         c.documento,
@@ -180,38 +180,46 @@ df_webhook = run_query(f"""
         c.ddd,
         c.telefone,
         EXTRACT(DAY   FROM c.data_nascimento) AS dia,
-        EXTRACT(MONTH FROM c.data_nascimento) AS mes
+        EXTRACT(MONTH FROM c.data_nascimento) AS mes_nasc,
+        m.ultimo_canal
     FROM {CLIENTES} c
     JOIN metricas m USING (documento)
     WHERE c.data_nascimento IS NOT NULL
-      AND ({condicoes})
-""")
+      AND EXTRACT(MONTH FROM c.data_nascimento) = {dia_alvo.month}
+      AND EXTRACT(DAY   FROM c.data_nascimento) = {dia_alvo.day}
+"""
 
-df_webhook["whatsapp"]     = df_webhook.apply(lambda r: fone_whatsapp(r.ddd, r.telefone), axis=1)
+df_webhook = run_query(SQL_WEBHOOK)
+df_webhook["whatsapp"]      = df_webhook.apply(lambda r: fone_whatsapp(r.ddd, r.telefone), axis=1)
 df_webhook["primeiro_nome"] = df_webhook["nome_completo"].apply(primeiro_nome)
+df_webhook["canal"]         = df_webhook["ultimo_canal"].apply(
+    lambda c: "ecommerce" if str(c).upper() == "ECOM" else "loja"
+)
 df_webhook = df_webhook[df_webhook["whatsapp"] != ""]
 
-st.info(f"**{len(df_webhook)} clientes** com aniversário nos próximos 7 dias e WhatsApp cadastrado.")
-
-if not df_webhook.empty:
+if df_webhook.empty:
+    st.warning(f"Nenhuma cliente com aniversário em {dia_alvo.strftime('%d/%m/%Y')} e WhatsApp cadastrado.")
+else:
+    st.success(f"**{len(df_webhook)} clientes** para disparar em {dia_alvo.strftime('%d/%m/%Y')}.")
     st.dataframe(
-        df_webhook[["primeiro_nome", "nome_completo", "whatsapp", "dia", "mes"]].rename(columns={
+        df_webhook[["primeiro_nome", "nome_completo", "whatsapp", "canal"]].rename(columns={
             "primeiro_nome": "Primeiro Nome", "nome_completo": "Nome Completo",
-            "whatsapp": "WhatsApp", "dia": "Dia", "mes": "Mês",
+            "whatsapp": "WhatsApp", "canal": "Canal",
         }),
         hide_index=True, use_container_width=True,
     )
 
     WEBHOOK_URL = "https://unnichat.com.br/a/start/olTsPCXC6yOLzQHwS34D"
 
-    if st.button("📲 Disparar Webhook Agora (próximos 7 dias)", type="primary"):
+    if st.button("📲 Disparar Webhook Agora", type="primary"):
         sucesso, erro = 0, 0
         barra = st.progress(0)
         for i, (_, row) in enumerate(df_webhook.iterrows()):
             try:
                 payload = {
-                    "phone": row["whatsapp"],
+                    "phone":     row["whatsapp"],
                     "variables": [row["primeiro_nome"]],
+                    "canal":     row["canal"],
                 }
                 resp = requests.post(WEBHOOK_URL, json=payload, timeout=10)
                 if resp.status_code < 400:
@@ -225,20 +233,52 @@ if not df_webhook.empty:
         if sucesso:
             st.success(f"✅ {sucesso} webhooks disparados com sucesso!")
         if erro:
-            st.warning(f"⚠️ {erro} falhas no envio. Verifique a URL do webhook.")
+            st.warning(f"⚠️ {erro} falhas no envio.")
+
+st.divider()
+
+# ── Teste de webhook ───────────────────────────────────────────────────────────
+with st.expander("🧪 Teste de Webhook (enviar para meu número)"):
+    WEBHOOK_URL = "https://unnichat.com.br/a/start/olTsPCXC6yOLzQHwS34D"
+    st.markdown("""
+    Envia **dois disparos de teste** para o seu número — um simulando cliente de loja
+    e outro de e-commerce — para você configurar as variáveis na ferramenta.
+    """)
+
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+        st.markdown("**Teste 1 — Loja física**")
+        st.json({"phone": "5562994919854", "variables": ["Matheus"], "canal": "loja"})
+    with col_t2:
+        st.markdown("**Teste 2 — E-commerce**")
+        st.json({"phone": "5562994919854", "variables": ["Matheus"], "canal": "ecommerce"})
+
+    if st.button("📲 Enviar testes agora", type="primary"):
+        testes = [
+            {"phone": "5562994919854", "variables": ["Matheus"], "canal": "loja"},
+            {"phone": "5562994919854", "variables": ["Matheus"], "canal": "ecommerce"},
+        ]
+        for payload in testes:
+            try:
+                resp = requests.post(WEBHOOK_URL, json=payload, timeout=10)
+                status = resp.status_code
+                if status < 400:
+                    st.success(f"✅ Teste **{payload['canal']}** enviado — status {status}")
+                else:
+                    st.error(f"❌ Teste **{payload['canal']}** falhou — status {status}: {resp.text[:200]}")
+            except Exception as e:
+                st.error(f"❌ Erro ao enviar teste **{payload['canal']}**: {e}")
 
 with st.expander("⚙️ Como automatizar o disparo diário às 9h?"):
-    st.markdown(f"""
-    Para disparar automaticamente todo dia às 9h sem precisar abrir o sistema, use o **GitHub Actions**:
-
-    1. No seu repositório GitHub, crie o arquivo `.github/workflows/webhook_aniversariantes.yml`
-    2. Cole o conteúdo abaixo (o horário está em UTC — 12:00 UTC = 9:00 BRT):
+    st.markdown("""
+    Para disparar automaticamente todo dia às 9h, use o **GitHub Actions**.
+    Crie o arquivo `.github/workflows/webhook_aniversariantes.yml` no repositório:
 
     ```yaml
     name: Webhook Aniversariantes
     on:
       schedule:
-        - cron: '0 12 * * *'
+        - cron: '0 12 * * *'   # 12:00 UTC = 09:00 BRT
     jobs:
       disparar:
         runs-on: ubuntu-latest
@@ -250,9 +290,6 @@ with st.expander("⚙️ Como automatizar o disparo diário às 9h?"):
           - run: pip install requests google-cloud-bigquery google-auth db-dtypes
           - run: python webhook_aniversariantes.py
             env:
-              GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{{{ secrets.GCP_SA_KEY }}}}
+              GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GCP_SA_KEY }}
     ```
-
-    3. Adicione o segredo `GCP_SA_KEY` no GitHub (Settings → Secrets → Actions)
-       com o conteúdo do arquivo JSON da sua chave de serviço.
     """)

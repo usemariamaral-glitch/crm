@@ -34,9 +34,9 @@ WITH primeira_compra AS (
 ),
 atividade AS (
     SELECT DISTINCT
-        p.documento,
-        DATE_TRUNC(DATE(p.data_pedido), MONTH) AS mes_atividade
-    FROM {PEDIDOS} p
+        documento,
+        DATE_TRUNC(DATE(data_pedido), MONTH) AS mes_atividade
+    FROM {PEDIDOS}
     {base_where}
 ),
 cohort_data AS (
@@ -103,77 +103,115 @@ st.plotly_chart(fig_heat, use_container_width=True)
 
 st.divider()
 
-# ── Taxa de recompra ──────────────────────────────────────────────────────────
-col_l, col_r = st.columns(2)
+# ── Clientes novos vs recorrentes no período ──────────────────────────────────
+st.subheader("Novos vs Recorrentes no Período")
+st.markdown("""
+**Como funciona:** De todas as clientes que compraram no período selecionado,
+quantas eram **novas** (primeira compra de toda a vida delas) e quantas já eram
+**clientes** (já tinham comprado antes do período)?
+""")
 
-with col_l:
-    st.subheader("Taxa de Recompra Geral")
-    df_recompra = run_query(f"""
-        WITH pedidos_por_cliente AS (
-            SELECT
-                documento,
-                COUNT(DISTINCT pedido_id) AS total_pedidos
+SQL_RECOMPRA = f"""
+WITH compras_periodo AS (
+    SELECT DISTINCT documento, loja
+    FROM {PEDIDOS}
+    WHERE documento IS NOT NULL
+      AND DATE(data_pedido) BETWEEN '{data_inicio}' AND '{data_fim}'
+      {STATUS_FATURADO}
+      {EXCLUIR_LOJAS}
+),
+primeira_compra_historica AS (
+    SELECT documento, MIN(DATE(data_pedido)) AS primeira_compra
+    FROM {PEDIDOS}
+    WHERE documento IS NOT NULL
+      {STATUS_FATURADO}
+      {EXCLUIR_LOJAS}
+    GROUP BY documento
+)
+SELECT
+    COUNT(DISTINCT cp.documento)                                    AS total_compradores,
+    COUNTIF(p.primeira_compra >= '{data_inicio}')                  AS clientes_novos,
+    COUNTIF(p.primeira_compra < '{data_inicio}')                   AS clientes_retorno
+FROM compras_periodo cp
+JOIN primeira_compra_historica p USING (documento)
+"""
+
+df_rc = run_query(SQL_RECOMPRA)
+
+if not df_rc.empty and df_rc.iloc[0].total_compradores > 0:
+    r = df_rc.iloc[0]
+    total = int(r.total_compradores)
+    novos = int(r.clientes_novos)
+    retorno = int(r.clientes_retorno)
+    pct_novos   = novos / total * 100
+    pct_retorno = retorno / total * 100
+
+    col_m1, col_m2, col_m3 = st.columns(3)
+    col_m1.metric("Compraram no período",  fmt_num(total))
+    col_m2.metric("Clientes novas",        fmt_num(novos),
+                  delta=f"{pct_novos:.1f}% do total")
+    col_m3.metric("Clientes recorrentes",  fmt_num(retorno),
+                  delta=f"{pct_retorno:.1f}% do total")
+
+    col_g1, col_g2 = st.columns(2)
+    with col_g1:
+        df_pizza = pd.DataFrame({
+            "Tipo": ["Novas", "Recorrentes"],
+            "Clientes": [novos, retorno],
+        })
+        fig_pizza = px.pie(
+            df_pizza, values="Clientes", names="Tipo",
+            color_discrete_sequence=["#8B2FC9", "#C85DA4"],
+            title="Proporção no período",
+        )
+        fig_pizza.update_traces(textposition="inside", textinfo="percent+label+value")
+        st.plotly_chart(fig_pizza, use_container_width=True)
+
+    with col_g2:
+        # Por canal
+        SQL_RC_CANAL = f"""
+        WITH compras_periodo AS (
+            SELECT DISTINCT documento, loja
             FROM {PEDIDOS}
-            {base_where}
-            GROUP BY 1
+            WHERE documento IS NOT NULL
+              AND DATE(data_pedido) BETWEEN '{data_inicio}' AND '{data_fim}'
+              {STATUS_FATURADO}
+              {EXCLUIR_LOJAS}
+        ),
+        primeira_historica AS (
+            SELECT documento, MIN(DATE(data_pedido)) AS primeira_compra
+            FROM {PEDIDOS}
+            WHERE documento IS NOT NULL {STATUS_FATURADO} {EXCLUIR_LOJAS}
+            GROUP BY documento
         )
         SELECT
-            CASE
-                WHEN total_pedidos = 1 THEN '1 compra (único)'
-                WHEN total_pedidos = 2 THEN '2 compras'
-                WHEN total_pedidos BETWEEN 3 AND 5 THEN '3–5 compras'
-                WHEN total_pedidos BETWEEN 6 AND 10 THEN '6–10 compras'
-                ELSE '11+ compras'
-            END AS faixa,
-            COUNT(*) AS clientes
-        FROM pedidos_por_cliente
-        GROUP BY 1
-        ORDER BY MIN(total_pedidos)
-    """)
-    if not df_recompra.empty:
-        total = df_recompra["clientes"].sum()
-        recompram = df_recompra[df_recompra["faixa"] != "1 compra (único)"]["clientes"].sum()
-        taxa = recompram / total * 100 if total > 0 else 0
-        st.metric("Taxa de Recompra", f"{taxa:.1f}%", help="% de clientes que compraram mais de 1 vez")
-        fig_rc = px.bar(
-            df_recompra, x="faixa", y="clientes",
-            color_discrete_sequence=["#C85DA4"],
-            labels={"faixa": "Faixa de Compras", "clientes": "Clientes"},
-        )
-        fig_rc.update_layout(plot_bgcolor="white")
-        st.plotly_chart(fig_rc, use_container_width=True)
-
-with col_r:
-    st.subheader("Recompra por Canal")
-    df_rc_canal = run_query(f"""
-        WITH pedidos_por_cliente AS (
-            SELECT
-                documento,
-                loja,
-                COUNT(DISTINCT pedido_id) AS total_pedidos
-            FROM {PEDIDOS}
-            {base_where}
-            GROUP BY 1, 2
-        )
-        SELECT
-            loja,
-            COUNTIF(total_pedidos > 1) AS recompraram,
-            COUNT(*) AS total_clientes,
-            ROUND(COUNTIF(total_pedidos > 1) / COUNT(*) * 100, 1) AS taxa_recompra
-        FROM pedidos_por_cliente
-        GROUP BY 1
-        ORDER BY 4 DESC
-    """)
-    if not df_rc_canal.empty:
-        fig_rc2 = px.bar(
-            df_rc_canal, x="loja", y="taxa_recompra",
-            color_discrete_sequence=["#8B2FC9"],
-            labels={"loja": "Canal/Loja", "taxa_recompra": "Taxa de Recompra (%)"},
-            text="taxa_recompra",
-        )
-        fig_rc2.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
-        fig_rc2.update_layout(plot_bgcolor="white", yaxis_range=[0, 100])
-        st.plotly_chart(fig_rc2, use_container_width=True)
+            cp.loja,
+            COUNTIF(p.primeira_compra >= '{data_inicio}') AS novas,
+            COUNTIF(p.primeira_compra < '{data_inicio}')  AS recorrentes,
+            COUNT(*) AS total
+        FROM compras_periodo cp
+        JOIN primeira_historica p USING (documento)
+        GROUP BY cp.loja
+        ORDER BY total DESC
+        """
+        df_canal = run_query(SQL_RC_CANAL)
+        if not df_canal.empty:
+            df_canal_melt = df_canal.melt(
+                id_vars="loja", value_vars=["novas", "recorrentes"],
+                var_name="Tipo", value_name="Clientes"
+            )
+            df_canal_melt["Tipo"] = df_canal_melt["Tipo"].map(
+                {"novas": "Novas", "recorrentes": "Recorrentes"}
+            )
+            fig_canal = px.bar(
+                df_canal_melt, x="loja", y="Clientes", color="Tipo",
+                barmode="stack",
+                color_discrete_map={"Novas": "#8B2FC9", "Recorrentes": "#C85DA4"},
+                labels={"loja": "Canal", "Clientes": "Clientes"},
+                title="Por canal",
+            )
+            fig_canal.update_layout(plot_bgcolor="white", legend_title="")
+            st.plotly_chart(fig_canal, use_container_width=True)
 
 st.divider()
 
@@ -208,4 +246,4 @@ if not df_intv.empty:
     fig_intv.update_traces(texttemplate="%{text:.0f} dias", textposition="outside")
     fig_intv.update_layout(plot_bgcolor="white")
     st.plotly_chart(fig_intv, use_container_width=True)
-    st.caption("Tempo médio que um cliente leva para fazer a próxima compra no mesmo canal.")
+    st.caption("Tempo médio que uma cliente leva para fazer a próxima compra no mesmo canal.")
