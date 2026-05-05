@@ -211,7 +211,10 @@ else:
         hide_index=True, use_container_width=True,
     )
 
-    WEBHOOK_URL = "https://unnichat.com.br/a/start/olTsPCXC6yOLzQHwS34D"
+    WEBHOOK_URL = st.secrets.get("webhook_url", "")
+    if not WEBHOOK_URL:
+        st.error("⚠️ URL do webhook não configurada. Adicione `webhook_url` nos secrets do Streamlit.")
+        st.stop()
 
     if st.button("📲 Disparar Webhook Agora", type="primary"):
         sucesso, erro = 0, 0
@@ -241,7 +244,7 @@ st.divider()
 
 # ── Teste de webhook ───────────────────────────────────────────────────────────
 with st.expander("🧪 Teste de Webhook (enviar para meu número)"):
-    WEBHOOK_URL = "https://unnichat.com.br/a/start/olTsPCXC6yOLzQHwS34D"
+    WEBHOOK_URL = st.secrets.get("webhook_url", "")
     st.markdown("""
     Envia **dois disparos de teste** para o seu número — um simulando cliente de loja
     e outro de e-commerce — para você configurar as variáveis na ferramenta.

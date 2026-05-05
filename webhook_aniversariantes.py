@@ -21,7 +21,7 @@ hoje     = date.today()
 dia_alvo = hoje + timedelta(days=7)
 print(f"Hoje: {hoje} | Disparando para aniversário em: {dia_alvo}")
 
-WEBHOOK_URL = "https://unnichat.com.br/a/start/olTsPCXC6yOLzQHwS34D"
+WEBHOOK_URL = os.environ["WEBHOOK_URL"]
 
 SQL = f"""
 WITH metricas AS (
