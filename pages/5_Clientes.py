@@ -23,7 +23,7 @@ SQL_CLIENTES = f"""
     WITH metricas AS (
         SELECT
             documento,
-            COUNT(DISTINCT pedido_id)                               AS total_pedidos,
+            COUNT(DISTINCT CONCAT(pedido_id, loja))                 AS total_pedidos,
             SUM(total_pedido)                                       AS total_gasto,
             AVG(total_pedido)                                       AS ticket_medio,
             MAX(DATE(data_pedido))                                  AS ultima_compra,

@@ -42,7 +42,7 @@ SQL = f"""
     WITH metricas AS (
         SELECT
             p.documento,
-            COUNT(DISTINCT p.pedido_id)                                    AS total_pedidos,
+            COUNT(DISTINCT CONCAT(p.pedido_id, p.loja))                    AS total_pedidos,
             SUM(p.total_pedido)                                            AS total_gasto,
             MAX(DATE(p.data_pedido))                                       AS ultima_compra,
             DATE_DIFF(CURRENT_DATE(), MAX(DATE(p.data_pedido)), DAY)       AS dias_sem_comprar,

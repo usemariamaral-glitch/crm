@@ -31,10 +31,10 @@ filtro = f"AND DATE(data_pedido) BETWEEN '{data_inicio}' AND '{data_fim}' {STATU
 df_kpi = run_query(f"""
     SELECT
         COUNT(DISTINCT documento)  AS total_clientes,
-        COUNT(DISTINCT pedido_id)  AS total_pedidos,
-        SUM(total_pedido)          AS receita_total,
-        AVG(total_pedido)          AS ticket_medio,
-        SUM(desconto)              AS total_desconto
+        COUNT(DISTINCT CONCAT(pedido_id, loja))  AS total_pedidos,
+        SUM(total_pedido)                        AS receita_total,
+        AVG(total_pedido)                        AS ticket_medio,
+        SUM(desconto)                            AS total_desconto
     FROM {PEDIDOS}
     WHERE documento IS NOT NULL {filtro} {EXCLUIR_LOJAS}
 """)
@@ -203,7 +203,7 @@ st.subheader("Formas de Pagamento")
 df_pg = run_query(f"""
     SELECT
         forma_pagamento,
-        COUNT(DISTINCT pedido_id) AS pedidos,
+        COUNT(DISTINCT CONCAT(pedido_id, loja)) AS pedidos,
         SUM(valor_pagamento)      AS total
     FROM {PAGAMENTOS}
     WHERE DATE(data_pedido) BETWEEN '{data_inicio}' AND '{data_fim}'

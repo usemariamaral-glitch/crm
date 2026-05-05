@@ -23,11 +23,11 @@ df_canais = run_query(f"""
     SELECT
         loja,
         origem_sistema,
-        COUNT(DISTINCT documento)  AS clientes_unicos,
-        COUNT(DISTINCT pedido_id)  AS total_pedidos,
-        SUM(total_pedido)          AS receita_total,
-        AVG(total_pedido)          AS ticket_medio,
-        SUM(desconto)              AS total_desconto
+        COUNT(DISTINCT documento)                AS clientes_unicos,
+        COUNT(DISTINCT CONCAT(pedido_id, loja)) AS total_pedidos,
+        SUM(total_pedido)                        AS receita_total,
+        AVG(total_pedido)                        AS ticket_medio,
+        SUM(desconto)                            AS total_desconto
     FROM {PEDIDOS}
     WHERE documento IS NOT NULL {filtro} {EXCLUIR_LOJAS}
     GROUP BY 1, 2
@@ -86,7 +86,7 @@ df_mensal = run_query(f"""
         DATE_TRUNC(DATE(data_pedido), MONTH) AS mes,
         loja,
         SUM(total_pedido)         AS receita,
-        COUNT(DISTINCT pedido_id) AS pedidos
+        COUNT(DISTINCT CONCAT(pedido_id, loja)) AS pedidos
     FROM {PEDIDOS}
     WHERE documento IS NOT NULL {filtro} {EXCLUIR_LOJAS}
     GROUP BY 1, 2

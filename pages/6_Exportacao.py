@@ -83,7 +83,7 @@ if objetivo == "Aniversariantes do mês":
         JOIN (
             SELECT
                 documento,
-                COUNT(DISTINCT pedido_id)             AS total_pedidos,
+                COUNT(DISTINCT CONCAT(pedido_id, loja)) AS total_pedidos,
                 SUM(total_pedido)                     AS total_gasto,
                 AVG(total_pedido)                     AS ticket_medio,
                 MAX(DATE(data_pedido))                AS ultima_compra,
@@ -103,7 +103,7 @@ elif objetivo == "Segmento RFM":
         SELECT
             documento,
             DATE_DIFF(CURRENT_DATE(), MAX(DATE(data_pedido)), DAY) AS recencia_dias,
-            COUNT(DISTINCT pedido_id)                               AS frequencia,
+            COUNT(DISTINCT CONCAT(pedido_id, loja))                 AS frequencia,
             SUM(total_pedido)                                       AS valor,
             AVG(total_pedido)                                       AS ticket_medio
         FROM {PEDIDOS}
@@ -152,7 +152,7 @@ else:
         WITH metricas AS (
             SELECT
                 documento,
-                COUNT(DISTINCT pedido_id)                               AS total_pedidos,
+                COUNT(DISTINCT CONCAT(pedido_id, loja))                 AS total_pedidos,
                 SUM(total_pedido)                                       AS total_gasto,
                 AVG(total_pedido)                                       AS ticket_medio,
                 MAX(DATE(data_pedido))                                  AS ultima_compra,

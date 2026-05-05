@@ -38,7 +38,7 @@ rfm_raw AS (
     SELECT
         documento,
         DATE_DIFF(CURRENT_DATE(), MAX(DATE(data_pedido)), DAY) AS recencia_dias,
-        COUNT(DISTINCT pedido_id)                               AS frequencia,
+        COUNT(DISTINCT CONCAT(pedido_id, loja))                 AS frequencia,
         SUM(total_pedido)                                       AS valor
     FROM pedidos
     GROUP BY documento

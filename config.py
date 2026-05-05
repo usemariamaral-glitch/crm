@@ -22,8 +22,9 @@ PERIODOS = [
 EXCLUIR_LOJAS = f"""
     AND documento NOT IN (
         SELECT documento FROM {CLIENTES}
-        WHERE UPPER(COALESCE(nome_completo, '')) LIKE '%M A CONFEC%'
-           OR UPPER(COALESCE(nome_completo, '')) LIKE '%N S CONFEC%'
+        WHERE documento IS NOT NULL
+          AND (UPPER(COALESCE(nome_completo, '')) LIKE '%M A CONFEC%'
+           OR UPPER(COALESCE(nome_completo, '')) LIKE '%N S CONFEC%')
     )
 """
 
