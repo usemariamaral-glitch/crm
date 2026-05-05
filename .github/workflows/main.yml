@@ -1,8 +1,8 @@
 name: Webhook Aniversariantes
 on:
   schedule:
-    - cron: '0 12 * * *'   # 12:00 UTC = 09:00 BRT
-  workflow_dispatch:         # permite rodar manualmente pelo GitHub
+    - cron: '0 12 * * *'
+  workflow_dispatch:
 
 jobs:
   disparar:
@@ -13,6 +13,7 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install requests google-cloud-bigquery google-auth db-dtypes pandas
-      - run: python crm/webhook_aniversariantes.py
+      - run: python webhook_aniversariantes.py
         env:
           GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GCP_SA_KEY }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
