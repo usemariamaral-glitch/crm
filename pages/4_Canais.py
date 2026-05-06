@@ -3,7 +3,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 from utils import run_query, fmt_brl, fmt_num, CSS, sidebar_periodo, verificar_senha
-from config import PEDIDOS, EXCLUIR_LOJAS, STATUS_FATURADO
+from config import PEDIDOS, CLIENTES, EXCLUIR_LOJAS, STATUS_FATURADO
 
 st.set_page_config(page_title="Canais | CRM", page_icon="🏪", layout="wide")
 if not verificar_senha():
