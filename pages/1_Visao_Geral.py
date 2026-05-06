@@ -30,13 +30,20 @@ filtro = f"AND DATE(data_pedido) BETWEEN '{data_inicio}' AND '{data_fim}' {STATU
 # ── KPIs ──────────────────────────────────────────────────────────────────────
 df_kpi = run_query(f"""
     SELECT
-        COUNT(DISTINCT documento)  AS total_clientes,
+        COUNT(DISTINCT CASE WHEN documento IS NOT NULL THEN documento END) AS total_clientes,
         COUNT(DISTINCT CONCAT(pedido_id, loja))  AS total_pedidos,
         SUM(total_pedido)                        AS receita_total,
         AVG(total_pedido)                        AS ticket_medio,
         SUM(desconto)                            AS total_desconto
     FROM {PEDIDOS}
-    WHERE documento IS NOT NULL {filtro} {EXCLUIR_LOJAS}
+    WHERE DATE(data_pedido) BETWEEN '{data_inicio}' AND '{data_fim}'
+      {STATUS_FATURADO} {canal_sql}
+      AND (documento IS NULL OR documento NOT IN (
+          SELECT documento FROM {CLIENTES}
+          WHERE documento IS NOT NULL
+            AND (UPPER(COALESCE(nome_completo, '')) LIKE '%M A CONFEC%'
+             OR UPPER(COALESCE(nome_completo, '')) LIKE '%N S CONFEC%')
+      ))
 """)
 
 if not df_kpi.empty:
