@@ -26,7 +26,7 @@ elif canal_sel == "Loja Bernardo Sayão":
 
 SQL_RFM = f"""
 WITH pedidos AS (
-    SELECT documento, pedido_id, total_pedido, data_pedido
+    SELECT documento, pedido_id, loja, total_pedido, data_pedido
     FROM {PEDIDOS}
     WHERE documento IS NOT NULL
       AND total_pedido > 0

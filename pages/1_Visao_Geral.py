@@ -203,7 +203,7 @@ st.subheader("Formas de Pagamento")
 df_pg = run_query(f"""
     SELECT
         forma_pagamento,
-        COUNT(DISTINCT CONCAT(pedido_id, loja)) AS pedidos,
+        COUNT(DISTINCT pedido_id) AS pedidos,
         SUM(valor_pagamento)      AS total
     FROM {PAGAMENTOS}
     WHERE DATE(data_pedido) BETWEEN '{data_inicio}' AND '{data_fim}'
