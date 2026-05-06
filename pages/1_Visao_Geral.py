@@ -100,7 +100,14 @@ with col_l:
             loja,
             SUM(total_pedido) AS receita
         FROM {PEDIDOS}
-        WHERE documento IS NOT NULL {filtro} {EXCLUIR_LOJAS}
+        WHERE DATE(data_pedido) BETWEEN '{data_inicio}' AND '{data_fim}'
+          {STATUS_FATURADO} {canal_sql}
+          AND (documento IS NULL OR documento NOT IN (
+              SELECT documento FROM {CLIENTES}
+              WHERE documento IS NOT NULL
+                AND (UPPER(COALESCE(nome_completo, '')) LIKE '%M A CONFEC%'
+                 OR UPPER(COALESCE(nome_completo, '')) LIKE '%N S CONFEC%')
+          ))
         GROUP BY 1, 2
         ORDER BY 1
     """)
@@ -124,7 +131,14 @@ with col_r:
             SUM(total_pedido) AS receita,
             COUNT(DISTINCT documento) AS clientes
         FROM {PEDIDOS}
-        WHERE documento IS NOT NULL {filtro} {EXCLUIR_LOJAS}
+        WHERE DATE(data_pedido) BETWEEN '{data_inicio}' AND '{data_fim}'
+          {STATUS_FATURADO} {canal_sql}
+          AND (documento IS NULL OR documento NOT IN (
+              SELECT documento FROM {CLIENTES}
+              WHERE documento IS NOT NULL
+                AND (UPPER(COALESCE(nome_completo, '')) LIKE '%M A CONFEC%'
+                 OR UPPER(COALESCE(nome_completo, '')) LIKE '%N S CONFEC%')
+          ))
         GROUP BY 1
         ORDER BY 2 DESC
     """)
