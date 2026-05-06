@@ -31,7 +31,7 @@ SQL_CLIENTES = f"""
             DATE_DIFF(CURRENT_DATE(), MAX(DATE(data_pedido)), DAY)  AS dias_sem_comprar,
             STRING_AGG(DISTINCT loja, ' / ' ORDER BY loja)         AS canais
         FROM {PEDIDOS}
-        WHERE documento IS NOT NULL {filtro} {EXCLUIR_LOJAS}
+        WHERE documento IS NOT NULL AND documento != '' {filtro} {EXCLUIR_LOJAS}
         GROUP BY documento
     )
     SELECT
