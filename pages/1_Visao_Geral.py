@@ -1,13 +1,12 @@
 import streamlit as st
 import plotly.express as px
 import pandas as pd
-from utils import run_query, fmt_brl, fmt_num, CSS, sidebar_periodo, verificar_senha
+from utils import run_query, fmt_brl, fmt_num, sidebar_periodo, verificar_senha
 from config import PEDIDOS, CLIENTES, ITENS, PAGAMENTOS, EXCLUIR_LOJAS, STATUS_FATURADO
 
 st.set_page_config(page_title="Visão Geral | CRM", page_icon="📊", layout="wide")
 if not verificar_senha():
     st.stop()
-st.markdown(CSS, unsafe_allow_html=True)
 st.title("📊 Visão Geral")
 
 with st.sidebar:

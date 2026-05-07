@@ -1,12 +1,11 @@
 import streamlit as st
 import pandas as pd
-from utils import run_query, fmt_brl, fmt_num, CSS, fone_whatsapp, sidebar_periodo, verificar_senha
+from utils import run_query, fmt_brl, fmt_num, fone_whatsapp, sidebar_periodo, verificar_senha
 from config import PEDIDOS, CLIENTES, EXCLUIR_LOJAS, STATUS_FATURADO
 
 st.set_page_config(page_title="Clientes | CRM", page_icon="👥", layout="wide")
 if not verificar_senha():
     st.stop()
-st.markdown(CSS, unsafe_allow_html=True)
 st.title("👥 Base de Clientes")
 
 with st.sidebar:

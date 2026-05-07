@@ -2,13 +2,12 @@ import streamlit as st
 import pandas as pd
 from io import BytesIO
 from datetime import date
-from utils import run_query, fmt_brl, fmt_num, CSS, fone_whatsapp, primeiro_nome, verificar_senha
+from utils import run_query, fmt_brl, fmt_num, fone_whatsapp, primeiro_nome, verificar_senha
 from config import PEDIDOS, CLIENTES, EXCLUIR_LOJAS, STATUS_FATURADO
 
 st.set_page_config(page_title="Exportação | CRM", page_icon="📤", layout="wide")
 if not verificar_senha():
     st.stop()
-st.markdown(CSS, unsafe_allow_html=True)
 st.title("📤 Exportação para WhatsApp")
 st.markdown("Monte listas segmentadas de clientes para disparos via WhatsApp.")
 

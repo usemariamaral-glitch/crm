@@ -2,13 +2,12 @@ import streamlit as st
 import pandas as pd
 import requests
 from datetime import date, timedelta
-from utils import run_query, fmt_num, fmt_brl, CSS, fone_whatsapp, primeiro_nome, verificar_senha
+from utils import run_query, fmt_num, fmt_brl, fone_whatsapp, primeiro_nome, verificar_senha
 from config import PEDIDOS, CLIENTES, EXCLUIR_LOJAS, STATUS_FATURADO
 
 st.set_page_config(page_title="Aniversariantes | CRM", page_icon="🎂", layout="wide")
 if not verificar_senha():
     st.stop()
-st.markdown(CSS, unsafe_allow_html=True)
 st.title("🎂 Aniversariantes")
 st.markdown("Gerencie os aniversariantes para ações de relacionamento personalizadas.")
 
