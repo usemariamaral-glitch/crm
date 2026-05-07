@@ -43,11 +43,11 @@ def run_query(sql: str) -> pd.DataFrame:
 def periodo_para_data(periodo: str) -> str:
     hoje = date.today()
     mapa = {
-        "Últimos 30 dias":   str(hoje - timedelta(days=30)),
-        "Últimos 90 dias":   str(hoje - timedelta(days=90)),
-        "Últimos 12 meses":  str(hoje.replace(year=hoje.year - 1)),
-        "Este ano":          str(hoje.replace(month=1, day=1)),
-        "Tudo":              "2000-01-01",
+        "Últimos 30 dias":  str(hoje - timedelta(days=30)),
+        "Últimos 90 dias":  str(hoje - timedelta(days=90)),
+        "Últimos 12 meses": str(hoje.replace(year=hoje.year - 1)),
+        "Este ano":         str(hoje.replace(month=1, day=1)),
+        "Tudo":             "2000-01-01",
     }
     return mapa.get(periodo, "2000-01-01")
 
@@ -85,37 +85,74 @@ def primeiro_nome(nome) -> str:
 
 
 # ── Tema / CSS ────────────────────────────────────────────────────────────────
+# Cor principal da marca: #1d3c4d (azul marinho)
+# Cor de destaque:        #C85DA4 (rosa — gráficos e badges)
 
 CSS_LIGHT = """
 <style>
-/* ═══ BASE ═══ */
-.stApp { background: #F7F3FA !important; }
-.block-container { padding-top: 1.8rem !important; padding-bottom: 2rem !important; }
-
-/* ═══ SIDEBAR ═══ */
-section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #EEE4F6 0%, #F5EFF9 40%, #FAF7FC 100%) !important;
-    border-right: 1px solid #DDD0EC !important;
+/* ═══ APP BASE ═══ */
+.stApp { background: #F2F6F8 !important; }
+.block-container {
+    padding-top: 1.8rem !important;
+    padding-bottom: 2rem !important;
 }
+
+/* ═══ SIDEBAR — azul marinho escuro ═══ */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #1d3c4d 0%, #162e3c 100%) !important;
+    border-right: none !important;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.18) !important;
+}
+section[data-testid="stSidebar"] * { color: #A8C8D8 !important; }
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] div { color: #B8D0DC !important; }
 section[data-testid="stSidebar"] h1,
 section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3 {
-    color: #8B2FC9 !important;
-    font-size: 0.95rem !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.04em !important;
+    color: white !important;
+    font-size: 0.7rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.12em !important;
     text-transform: uppercase !important;
     border-bottom: none !important;
-    margin-bottom: 0.6rem !important;
+    margin-bottom: 0.4rem !important;
+}
+section[data-testid="stSidebar"] hr {
+    border-color: rgba(255,255,255,0.12) !important;
+    margin: 0.6rem 0 !important;
+}
+section[data-testid="stSidebar"] .stButton > button {
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.18) !important;
+    color: #C8DCE8 !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 0.82rem !important;
+    transition: all 0.2s ease !important;
+}
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background: rgba(255,255,255,0.16) !important;
+    color: white !important;
+}
+/* Nav links no menu lateral */
+[data-testid="stSidebarNav"] a { color: #A8C8D8 !important; }
+[data-testid="stSidebarNav"] a:hover { color: white !important; background: rgba(255,255,255,0.08) !important; }
+[data-testid="stSidebarNav"] a[aria-current="page"] {
+    color: white !important;
+    background: rgba(255,255,255,0.14) !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
 }
 
 /* ═══ METRIC CARDS ═══ */
 [data-testid="stMetric"] {
     background: white !important;
-    border: 1px solid #EDD8F5 !important;
-    border-radius: 16px !important;
-    padding: 1.1rem 1.4rem !important;
-    box-shadow: 0 2px 16px rgba(139,47,201,0.07) !important;
+    border: 1px solid #C8D8E4 !important;
+    border-radius: 14px !important;
+    padding: 1.2rem 1.5rem !important;
+    box-shadow: 0 2px 14px rgba(29,60,77,0.10) !important;
     position: relative !important;
     overflow: hidden !important;
     transition: transform 0.2s ease, box-shadow 0.2s ease !important;
@@ -124,117 +161,118 @@ section[data-testid="stSidebar"] h3 {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #C85DA4, #8B2FC9);
-    border-radius: 3px 3px 0 0;
+    height: 4px;
+    background: linear-gradient(90deg, #1d3c4d, #2d7a94);
+    border-radius: 4px 4px 0 0;
 }
 [data-testid="stMetric"]:hover {
     transform: translateY(-3px) !important;
-    box-shadow: 0 8px 28px rgba(200,93,164,0.18) !important;
+    box-shadow: 0 8px 28px rgba(29,60,77,0.16) !important;
 }
 [data-testid="stMetricValue"] {
-    color: #C85DA4 !important;
+    color: #1d3c4d !important;
     font-weight: 800 !important;
     font-size: 1.45rem !important;
     letter-spacing: -0.01em !important;
 }
 [data-testid="stMetricLabel"] {
-    color: #9B8AAA !important;
+    color: #6B8A9A !important;
     font-size: 0.72rem !important;
     font-weight: 700 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.07em !important;
 }
-[data-testid="stMetricDelta"] { font-size: 0.8rem !important; }
 
 /* ═══ HEADINGS ═══ */
 h1 {
-    color: #C85DA4 !important;
+    color: #1d3c4d !important;
     font-weight: 800 !important;
     font-size: 1.75rem !important;
     letter-spacing: -0.02em !important;
     padding-bottom: 0.5rem !important;
-    border-bottom: 2px solid #EDD8F5 !important;
+    border-bottom: 2px solid #C8D8E4 !important;
     margin-bottom: 1.4rem !important;
 }
-h2 { color: #7B2FA8 !important; font-weight: 700 !important; }
-h3 { color: #9B3DC4 !important; font-weight: 600 !important; }
+h2 { color: #1d3c4d !important; font-weight: 700 !important; font-size: 1.1rem !important; }
+h3 { color: #2d5a72 !important; font-weight: 600 !important; }
 
-/* ═══ PRIMARY BUTTON ═══ */
+/* ═══ BUTTONS ═══ */
 .stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #C85DA4 0%, #8B2FC9 100%) !important;
+    background: linear-gradient(135deg, #1d3c4d 0%, #2d7a94 100%) !important;
     border: none !important;
     color: white !important;
-    border-radius: 12px !important;
+    border-radius: 10px !important;
     font-weight: 700 !important;
     font-size: 0.95rem !important;
-    padding: 0.55rem 1.5rem !important;
-    box-shadow: 0 4px 14px rgba(200,93,164,0.3) !important;
+    box-shadow: 0 4px 14px rgba(29,60,77,0.32) !important;
     transition: all 0.2s ease !important;
 }
 .stButton > button[kind="primary"]:hover {
-    box-shadow: 0 6px 20px rgba(200,93,164,0.45) !important;
+    box-shadow: 0 6px 20px rgba(29,60,77,0.48) !important;
     transform: translateY(-1px) !important;
 }
 .stButton > button[kind="secondary"] {
     border-radius: 10px !important;
-    border: 1.5px solid #DDD0EC !important;
-    color: #7B2FA8 !important;
+    border: 1.5px solid #C8D8E4 !important;
+    color: #1d3c4d !important;
     font-weight: 600 !important;
+    background: white !important;
     transition: all 0.2s ease !important;
 }
 .stButton > button[kind="secondary"]:hover {
-    border-color: #C85DA4 !important;
-    background: #FBF5FF !important;
+    border-color: #1d3c4d !important;
+    background: #EEF3F6 !important;
 }
 
 /* ═══ INPUTS ═══ */
 [data-testid="stTextInput"] input,
 [data-testid="stNumberInput"] input {
     border-radius: 10px !important;
-    border: 1.5px solid #DDD0EC !important;
+    border: 1.5px solid #C8D8E4 !important;
+    background: white !important;
     transition: all 0.2s ease !important;
 }
 [data-testid="stTextInput"] input:focus,
 [data-testid="stNumberInput"] input:focus {
-    border-color: #C85DA4 !important;
-    box-shadow: 0 0 0 3px rgba(200,93,164,0.12) !important;
+    border-color: #1d3c4d !important;
+    box-shadow: 0 0 0 3px rgba(29,60,77,0.12) !important;
 }
 
 /* ═══ SELECT / MULTISELECT ═══ */
 [data-testid="stSelectbox"] > div > div,
 [data-testid="stMultiSelect"] > div > div {
     border-radius: 10px !important;
-    border-color: #DDD0EC !important;
+    border-color: #C8D8E4 !important;
+    background: white !important;
 }
 
 /* ═══ DATAFRAME ═══ */
 [data-testid="stDataFrame"] {
     border-radius: 14px !important;
     overflow: hidden !important;
-    box-shadow: 0 2px 10px rgba(139,47,201,0.08) !important;
-    border: 1px solid #EDD8F5 !important;
+    box-shadow: 0 2px 10px rgba(29,60,77,0.08) !important;
+    border: 1px solid #C8D8E4 !important;
 }
 
 /* ═══ PLOTLY CHARTS ═══ */
 [data-testid="stPlotlyChart"] {
     border-radius: 16px !important;
     overflow: hidden !important;
-    box-shadow: 0 2px 14px rgba(0,0,0,0.06) !important;
+    box-shadow: 0 2px 14px rgba(29,60,77,0.08) !important;
     background: white !important;
-    border: 1px solid #EDD8F5 !important;
-    padding: 0.2rem !important;
+    border: 1px solid #C8D8E4 !important;
+    padding: 0.3rem !important;
 }
 
 /* ═══ EXPANDERS ═══ */
 details {
-    border: 1.5px solid #EDD8F5 !important;
+    border: 1.5px solid #C8D8E4 !important;
     border-radius: 14px !important;
     overflow: hidden !important;
 }
 details summary {
-    background: linear-gradient(135deg, #FBF5FF, #fff) !important;
-    color: #8B2FC9 !important;
+    background: linear-gradient(135deg, #EEF3F6, #fff) !important;
+    color: #1d3c4d !important;
     font-weight: 600 !important;
     padding: 0.8rem 1rem !important;
 }
@@ -243,65 +281,84 @@ details summary {
 [data-testid="stAlert"] { border-radius: 12px !important; }
 
 /* ═══ DIVIDER ═══ */
-hr { border-color: #EDD8F5 !important; opacity: 0.9 !important; }
+hr { border-color: #C8D8E4 !important; opacity: 0.9 !important; }
 
 /* ═══ DOWNLOAD BUTTON ═══ */
 [data-testid="stDownloadButton"] button {
     border-radius: 10px !important;
-    border: 2px solid #C85DA4 !important;
-    color: #C85DA4 !important;
+    border: 2px solid #1d3c4d !important;
+    color: #1d3c4d !important;
     background: white !important;
     font-weight: 700 !important;
     transition: all 0.2s ease !important;
 }
 [data-testid="stDownloadButton"] button:hover {
-    background: linear-gradient(135deg, #C85DA4, #8B2FC9) !important;
+    background: #1d3c4d !important;
     color: white !important;
-    border-color: transparent !important;
-    box-shadow: 0 4px 14px rgba(200,93,164,0.3) !important;
+    box-shadow: 0 4px 14px rgba(29,60,77,0.32) !important;
 }
 
 /* ═══ TABS ═══ */
 [data-testid="stTabs"] [role="tab"][aria-selected="true"] {
-    color: #C85DA4 !important;
-    border-bottom-color: #C85DA4 !important;
+    color: #1d3c4d !important;
+    border-bottom-color: #1d3c4d !important;
 }
-
-/* ═══ RADIO ═══ */
-[data-testid="stRadio"] label { font-weight: 500 !important; }
 </style>
 """
 
 CSS_DARK = """
 <style>
-/* ═══ BASE ═══ */
-.stApp { background: #0E0E1C !important; }
+/* ═══ APP BASE ═══ */
+.stApp { background: #091520 !important; }
 .block-container { padding-top: 1.8rem !important; padding-bottom: 2rem !important; }
-body, p, span, div, label, li, .stMarkdown { color: #DDD8F0 !important; }
+body, p, span, label, li, .stMarkdown { color: #B8D0DC !important; }
 
-/* ═══ SIDEBAR ═══ */
+/* ═══ SIDEBAR (mais escura no dark mode) ═══ */
 section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #16162A 0%, #191928 100%) !important;
-    border-right: 1px solid #2A2A48 !important;
+    background: linear-gradient(180deg, #091520 0%, #0d1e2b 100%) !important;
+    border-right: 1px solid #1a3040 !important;
 }
-section[data-testid="stSidebar"] * { color: #C8C4E0 !important; }
+section[data-testid="stSidebar"] * { color: #7A9AAA !important; }
 section[data-testid="stSidebar"] h1,
 section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3 {
-    color: #C870B8 !important;
-    font-size: 0.95rem !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.04em !important;
+    color: #A8C8D8 !important;
+    font-size: 0.7rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.12em !important;
     text-transform: uppercase !important;
     border-bottom: none !important;
+}
+section[data-testid="stSidebar"] hr {
+    border-color: rgba(255,255,255,0.07) !important;
+}
+section[data-testid="stSidebar"] .stButton > button {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
+    color: #7A9AAA !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: 0.82rem !important;
+}
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background: rgba(255,255,255,0.10) !important;
+    color: #A8C8D8 !important;
+}
+[data-testid="stSidebarNav"] a { color: #7A9AAA !important; }
+[data-testid="stSidebarNav"] a:hover { color: #A8C8D8 !important; }
+[data-testid="stSidebarNav"] a[aria-current="page"] {
+    color: #C8E0EC !important;
+    background: rgba(255,255,255,0.08) !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
 }
 
 /* ═══ METRIC CARDS ═══ */
 [data-testid="stMetric"] {
-    background: #1A1A30 !important;
-    border: 1px solid #2D2D52 !important;
-    border-radius: 16px !important;
-    padding: 1.1rem 1.4rem !important;
+    background: #0F2030 !important;
+    border: 1px solid #1E3A50 !important;
+    border-radius: 14px !important;
+    padding: 1.2rem 1.5rem !important;
     box-shadow: 0 2px 16px rgba(0,0,0,0.3) !important;
     position: relative !important;
     overflow: hidden !important;
@@ -311,21 +368,21 @@ section[data-testid="stSidebar"] h3 {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #D470B5, #9B4FD9);
-    border-radius: 3px 3px 0 0;
+    height: 4px;
+    background: linear-gradient(90deg, #2d7a94, #5AAAC8);
+    border-radius: 4px 4px 0 0;
 }
 [data-testid="stMetric"]:hover {
     transform: translateY(-3px) !important;
-    box-shadow: 0 8px 28px rgba(200,93,164,0.25) !important;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.4) !important;
 }
 [data-testid="stMetricValue"] {
-    color: #D470B5 !important;
+    color: #5AAAC8 !important;
     font-weight: 800 !important;
     font-size: 1.45rem !important;
 }
 [data-testid="stMetricLabel"] {
-    color: #7878A0 !important;
+    color: #4A7A8A !important;
     font-size: 0.72rem !important;
     font-weight: 700 !important;
     text-transform: uppercase !important;
@@ -334,64 +391,64 @@ section[data-testid="stSidebar"] h3 {
 
 /* ═══ HEADINGS ═══ */
 h1 {
-    color: #D470B5 !important;
+    color: #5AAAC8 !important;
     font-weight: 800 !important;
     font-size: 1.75rem !important;
     letter-spacing: -0.02em !important;
     padding-bottom: 0.5rem !important;
-    border-bottom: 2px solid #2D2D52 !important;
+    border-bottom: 2px solid #1E3A50 !important;
     margin-bottom: 1.4rem !important;
 }
-h2 { color: #A860E0 !important; font-weight: 700 !important; }
-h3 { color: #C070D0 !important; font-weight: 600 !important; }
+h2 { color: #4A9AB8 !important; font-weight: 700 !important; }
+h3 { color: #3A8AA8 !important; font-weight: 600 !important; }
 
-/* ═══ PRIMARY BUTTON ═══ */
+/* ═══ BUTTONS ═══ */
 .stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #C85DA4 0%, #8B2FC9 100%) !important;
+    background: linear-gradient(135deg, #1d3c4d 0%, #2d7a94 100%) !important;
     border: none !important;
     color: white !important;
-    border-radius: 12px !important;
+    border-radius: 10px !important;
     font-weight: 700 !important;
-    box-shadow: 0 4px 14px rgba(200,93,164,0.35) !important;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4) !important;
     transition: all 0.2s ease !important;
 }
 .stButton > button[kind="primary"]:hover {
-    box-shadow: 0 6px 20px rgba(200,93,164,0.5) !important;
+    box-shadow: 0 6px 20px rgba(45,122,148,0.5) !important;
     transform: translateY(-1px) !important;
 }
 .stButton > button[kind="secondary"] {
     border-radius: 10px !important;
-    background: #1A1A30 !important;
-    border: 1.5px solid #3A3A60 !important;
-    color: #C8C4E0 !important;
+    background: #0F2030 !important;
+    border: 1.5px solid #1E3A50 !important;
+    color: #7A9AAA !important;
     font-weight: 600 !important;
     transition: all 0.2s ease !important;
 }
 .stButton > button[kind="secondary"]:hover {
-    border-color: #D470B5 !important;
-    background: #222240 !important;
+    border-color: #3A8AAA !important;
+    color: #A8C8D8 !important;
 }
 
 /* ═══ INPUTS ═══ */
 [data-testid="stTextInput"] input,
 [data-testid="stNumberInput"] input {
     border-radius: 10px !important;
-    border: 1.5px solid #3A3A60 !important;
-    background: #1A1A30 !important;
-    color: #DDD8F0 !important;
+    border: 1.5px solid #1E3A50 !important;
+    background: #0F2030 !important;
+    color: #B8D0DC !important;
 }
 [data-testid="stTextInput"] input:focus,
 [data-testid="stNumberInput"] input:focus {
-    border-color: #D470B5 !important;
-    box-shadow: 0 0 0 3px rgba(212,112,181,0.18) !important;
+    border-color: #3A8AAA !important;
+    box-shadow: 0 0 0 3px rgba(58,138,170,0.18) !important;
 }
 
 /* ═══ SELECT / MULTISELECT ═══ */
 [data-testid="stSelectbox"] > div > div,
 [data-testid="stMultiSelect"] > div > div {
     border-radius: 10px !important;
-    border-color: #3A3A60 !important;
-    background: #1A1A30 !important;
+    border-color: #1E3A50 !important;
+    background: #0F2030 !important;
 }
 
 /* ═══ DATAFRAME ═══ */
@@ -399,7 +456,7 @@ h3 { color: #C070D0 !important; font-weight: 600 !important; }
     border-radius: 14px !important;
     overflow: hidden !important;
     box-shadow: 0 2px 10px rgba(0,0,0,0.35) !important;
-    border: 1px solid #2D2D52 !important;
+    border: 1px solid #1E3A50 !important;
 }
 
 /* ═══ PLOTLY CHARTS ═══ */
@@ -407,62 +464,58 @@ h3 { color: #C070D0 !important; font-weight: 600 !important; }
     border-radius: 16px !important;
     overflow: hidden !important;
     box-shadow: 0 2px 14px rgba(0,0,0,0.35) !important;
-    background: #1A1A30 !important;
-    border: 1px solid #2D2D52 !important;
-    padding: 0.2rem !important;
+    background: #0F2030 !important;
+    border: 1px solid #1E3A50 !important;
+    padding: 0.3rem !important;
 }
 
 /* ═══ EXPANDERS ═══ */
 details {
-    border: 1.5px solid #2D2D52 !important;
+    border: 1.5px solid #1E3A50 !important;
     border-radius: 14px !important;
     overflow: hidden !important;
-    background: #1A1A30 !important;
+    background: #0F2030 !important;
 }
 details summary {
-    background: #1E1E38 !important;
-    color: #D470B5 !important;
+    background: #132838 !important;
+    color: #5AAAC8 !important;
     font-weight: 600 !important;
     padding: 0.8rem 1rem !important;
 }
 
-/* ═══ ALERTS ═══ */
+/* ═══ ALERTS / DIVIDER ═══ */
 [data-testid="stAlert"] { border-radius: 12px !important; }
-
-/* ═══ DIVIDER ═══ */
-hr { border-color: #2D2D52 !important; opacity: 0.9 !important; }
+hr { border-color: #1E3A50 !important; opacity: 0.9 !important; }
 
 /* ═══ DOWNLOAD BUTTON ═══ */
 [data-testid="stDownloadButton"] button {
     border-radius: 10px !important;
-    border: 2px solid #D470B5 !important;
-    color: #D470B5 !important;
-    background: #1A1A30 !important;
+    border: 2px solid #3A8AAA !important;
+    color: #5AAAC8 !important;
+    background: #0F2030 !important;
     font-weight: 700 !important;
     transition: all 0.2s ease !important;
 }
 [data-testid="stDownloadButton"] button:hover {
-    background: linear-gradient(135deg, #C85DA4, #8B2FC9) !important;
+    background: #1d3c4d !important;
     color: white !important;
     border-color: transparent !important;
 }
 
-/* ═══ CHECKBOX ═══ */
-[data-testid="stCheckbox"] label { color: #DDD8F0 !important; }
-
-/* ═══ RADIO ═══ */
-[data-testid="stRadio"] label { color: #DDD8F0 !important; font-weight: 500 !important; }
+/* ═══ CHECKBOX / RADIO ═══ */
+[data-testid="stCheckbox"] label,
+[data-testid="stRadio"] label { color: #B8D0DC !important; }
 
 /* ═══ TABS ═══ */
-[data-testid="stTabs"] [role="tab"] { color: #9090B0 !important; }
+[data-testid="stTabs"] [role="tab"] { color: #4A7A8A !important; }
 [data-testid="stTabs"] [role="tab"][aria-selected="true"] {
-    color: #D470B5 !important;
-    border-bottom-color: #D470B5 !important;
+    color: #5AAAC8 !important;
+    border-bottom-color: #5AAAC8 !important;
 }
 </style>
 """
 
-# Alias para compatibilidade (pages que ainda importam CSS)
+# Alias para compatibilidade
 CSS = CSS_LIGHT
 
 
@@ -486,19 +539,20 @@ def _verificar_credencial(senha_input: str, senha_armazenada: str) -> bool:
 
 
 def _sidebar_controles():
+    """Adiciona card de usuário + botões de tema e logout no topo da sidebar."""
     dark = st.session_state.get("dark_mode", False)
     nome = st.session_state.get("_usuario", {}).get("name", "Usuário")
-    cor_card = "rgba(200,93,164,0.15)" if not dark else "rgba(200,93,164,0.12)"
-    cor_texto = "#C85DA4" if not dark else "#D470B5"
-    cor_sub = "#888" if not dark else "#9090B0"
 
     with st.sidebar:
         st.markdown(f"""
-        <div style="background:{cor_card};border:1px solid rgba(200,93,164,0.25);
-                    border-radius:12px;padding:0.65rem 1rem;margin-bottom:0.7rem">
-            <div style="font-size:0.7rem;color:{cor_sub};font-weight:600;
-                        text-transform:uppercase;letter-spacing:0.05em">Logado como</div>
-            <div style="font-weight:700;color:{cor_texto};font-size:0.95rem;margin-top:2px">
+        <div style="background:rgba(255,255,255,0.09);
+                    border:1px solid rgba(255,255,255,0.16);
+                    border-radius:10px;padding:0.65rem 1rem;margin-bottom:0.75rem">
+            <div style="font-size:0.65rem;color:rgba(168,200,216,0.65);
+                        font-weight:800;text-transform:uppercase;letter-spacing:0.1em">
+                Logado como
+            </div>
+            <div style="font-weight:700;color:white;font-size:0.9rem;margin-top:3px">
                 👤 {nome}
             </div>
         </div>
@@ -506,9 +560,8 @@ def _sidebar_controles():
 
         col_t, col_s = st.columns(2)
         with col_t:
-            icone = "☀️" if dark else "🌙"
-            label = "Claro" if dark else "Escuro"
-            if st.button(f"{icone} {label}", use_container_width=True, key="_btn_tema"):
+            icone = "☀️ Claro" if dark else "🌙 Escuro"
+            if st.button(icone, use_container_width=True, key="_btn_tema"):
                 st.session_state["dark_mode"] = not dark
                 st.rerun()
         with col_s:
@@ -522,9 +575,10 @@ def _sidebar_controles():
 
 def _tela_login():
     dark = st.session_state.get("dark_mode", False)
-    bg_card  = "#1E1E38" if dark else "white"
-    brd      = "#2D2D52" if dark else "#EDD8F5"
-    txt_sub  = "#9090B0" if dark else "#AAA"
+    bg_card = "#0F2030" if dark else "white"
+    brd     = "#1E3A50" if dark else "#C8D8E4"
+    clr_h   = "#5AAAC8" if dark else "#1d3c4d"
+    clr_sub = "#4A7A8A" if dark else "#6B8A9A"
 
     users = dict(st.secrets.get("users", {}))
 
@@ -533,13 +587,12 @@ def _tela_login():
         st.markdown("<br><br>", unsafe_allow_html=True)
         st.markdown(f"""
         <div style="background:{bg_card};border:1px solid {brd};border-radius:22px;
-                    padding:2.5rem 2rem 2rem;
-                    box-shadow:0 12px 48px rgba(139,47,201,0.18);text-align:center">
-            <div style="font-size:3.2rem;line-height:1.1;margin-bottom:0.6rem">👗</div>
-            <h2 style="color:#C85DA4;margin:0 0 0.25rem;font-size:1.55rem;font-weight:800">
-                CRM Mari Amaral
-            </h2>
-            <p style="color:{txt_sub};margin:0;font-size:0.85rem">
+                    padding:2.4rem 2rem 1.8rem;
+                    box-shadow:0 12px 48px rgba(29,60,77,0.18);text-align:center">
+            <div style="font-size:3rem;line-height:1.1;margin-bottom:0.5rem">👗</div>
+            <h2 style="color:{clr_h};margin:0 0 0.2rem;font-size:1.5rem;font-weight:800;
+                        border:none;padding:0">CRM Mari Amaral</h2>
+            <p style="color:{clr_sub};margin:0;font-size:0.83rem">
                 Sistema de gestão de clientes
             </p>
         </div>
@@ -550,7 +603,6 @@ def _tela_login():
         if users:
             username_input = st.text_input("Usuário", placeholder="seu_usuario", key="_user_input")
             senha_input    = st.text_input("Senha", type="password", placeholder="••••••••", key="_pass_input")
-
             if st.button("Entrar →", use_container_width=True, type="primary", key="_btn_login"):
                 uname = username_input.strip().lower()
                 if uname in users:
@@ -568,7 +620,7 @@ def _tela_login():
                 else:
                     st.error("Usuário não encontrado.")
         else:
-            # Fallback: senha única (legado)
+            # Fallback senha única (legado)
             senha = st.text_input("Senha", type="password", placeholder="••••••••", key="_senha_input")
             if st.button("Entrar →", use_container_width=True, type="primary", key="_btn_login_leg"):
                 if _verificar_credencial(senha, st.secrets.get("app_password", "maricrm2024")):
@@ -580,7 +632,7 @@ def _tela_login():
 
 
 def verificar_senha() -> bool:
-    """Verifica autenticação. Retorna True se autenticado."""
+    """Verifica autenticação. Aplica CSS e controles de sidebar se autenticado."""
     if st.session_state.get("_autenticado"):
         st.markdown(get_css(), unsafe_allow_html=True)
         _sidebar_controles()
